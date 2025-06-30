@@ -474,19 +474,16 @@ class Profile(commands.Cog):
         badge_display = '\n'.join([BADGES[badge] for badge in badges]) if badges else BADGES['no_badge']
         embed.add_field(
             name='<:BadgeIcon:123456789> Badges',  # Replace with your server's badge emoji ID
-            value=badge_display.replace('👑', '<:OwnerBadge:123456789>')
-                              .replace('🛡️', '<:StaffBadge:123456789>')
-                              .replace('⚡', '<:AdminBadge:123456789>')
-                              .replace('❌', '<:NoBadge:123456789>'),
+            value=badge_display.replace('👑', '<:owner1:1389180694814654474>')
+                              .replace('🛡️', '<a:staff1:974820795928940554>')
+                              .replace('⚡', '<:admin1:1389181036755161221>')
+                              .replace('❌', '<a:nope1:1389178762020520109>'),
             inline=False
         )
         
         # Add no-prefix status (with custom emoji examples)
-        no_prefix_status = '<:Enabled:123456789> Enabled' if member.id in no_prefix_users else '<:Disabled:123456789> Disabled'
-        embed.add_field(name='<:PrefixIcon:123456789> No-Prefix Status', value=no_prefix_status, inline=False)
-        
-        # Add custom emoji hint
-        embed.set_footer(text='Replace <:EmojiName:123456789> with your server\'s custom emoji IDs')
+        no_prefix_status = '<:tick1:1389181551358509077> Enabled' if member.id in no_prefix_users else '<a:nope1:1389178762020520109> Disabled'
+        embed.add_field(name='<:prefix1:1389181942553116695> No-Prefix Status', value=no_prefix_status, inline=False)
         
         await ctx.send(embed=embed)
 
