@@ -466,14 +466,14 @@ class Profile(commands.Cog):
         
         # Add user info
         embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
-        embed.add_field(name='🆔 User ID', value=member.id, inline=True)
+        embed.add_field(name='<:idi1:1389183049916481646> User ID', value=member.id, inline=True)
         embed.add_field(name='📅 Joined', value=member.joined_at.strftime('%Y-%m-%d'), inline=True)
         
         # Add badges (with custom emoji examples)
         badges = user_data['badges'].get(member.id, set())
         badge_display = '\n'.join([BADGES[badge] for badge in badges]) if badges else BADGES['no_badge']
         embed.add_field(
-            name='<:BadgeIcon:123456789> Badges',  # Replace with your server's badge emoji ID
+            name='<a:badge1:1389182687947919370> Badges',  # Replace with your server's badge emoji ID
             value=badge_display.replace('👑', '<:owner1:1389180694814654474>')
                               .replace('🛡️', '<a:staff1:974820795928940554>')
                               .replace('⚡', '<:admin1:1389181036755161221>')
