@@ -22,8 +22,20 @@ def get_prefix(bot, message):
 
 bot = commands.Bot(command_prefix=get_prefix, intents=intents, owner_id=1101467683083530331)
 
-# Store user warnings
-warnings = {}
+# Store user data
+user_data = {
+    'warnings': {},
+    'badges': {},
+    'no_prefix': set()
+}
+
+# Available badges
+BADGES = {
+    'owner': '👑 Owner',
+    'staff': '🛡️ Staff',
+    'admin': '⚡ Admin',
+    'no_badge': '❌ No Badge'
+}
 
 # No-prefix permission commands
 @bot.command(name='grant_no_prefix')
@@ -56,150 +68,413 @@ auto_roles = {}
 # Store user application data
 applications = {}
 
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
     await bot.change_presence(activity=discord.Game(name='Universx MC | u!help'))
 
+# Custom Help Command
+class CustomHelpCommand(commands.HelpCommand):
+    def get_command_signature(self, command):
+        return f'{self.context.clean_prefix}{command.qualified_name} {command.signature}'
+
+    async def send_bot_help(self, mapping):
+        embed = discord.Embed(
+            title='📚 Universx MC Bot Help Menu',
+            description='Welcome to the help menu! Use `u!help <category>` for detailed information.',
+            color=discord.Color.blue()
+        )
+
+        # Add categories with emojis
+        categories = {
+            'Moderation': '🛡️',
+            'Auto-Role': '🎭',
+            'Application': '📝',
+            'Utility': '🔧',
+            'Profile': '👤',
+            'Owner': '👑'
+        }
+
+        for cog_name, emoji in categories.items():
+            cog_commands = [cmd for cmd in bot.commands if cmd.cog_name == cog_name]
+            if cog_commands:
+                command_list = ', '.join(f'`{cmd.name}`' for cmd in cog_commands)
+                embed.add_field(
+                    name=f'{emoji} {cog_name}',
+                    value=command_list,
+                    inline=False
+                )
+
+        embed.set_footer(text='Use u!help <command> for more details about a command')
+        await self.get_destination().send(embed=embed)
+
+    async def send_command_help(self, command):
+        embed = discord.Embed(
+            title=f'Command: {command.name}',
+            description=command.help or 'No description available',
+            color=discord.Color.green()
+        )
+
+        # Add command signature
+        embed.add_field(
+            name='Usage',
+            value=f'`{self.get_command_signature(command)}`',
+            inline=False
+        )
+
+        # Add aliases if they exist
+        if command.aliases:
+            embed.add_field(
+                name='Aliases',
+                value=', '.join(f'`{alias}`' for alias in command.aliases),
+                inline=False
+            )
+
+        await self.get_destination().send(embed=embed)
+
+    async def send_error_message(self, error):
+        embed = discord.Embed(
+            title='❌ Error',
+            description=error,
+            color=discord.Color.red()
+        )
+        await self.get_destination().send(embed=embed)
+
+# Set up custom help command
+bot.help_command = CustomHelpCommand()
+
 # Error Handler
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send('Command not found. Use `u!help` to see available commands.')
+        embed = discord.Embed(
+            title='❌ Command Not Found',
+            description='Use `u!help` to see available commands.',
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
     elif isinstance(error, commands.MissingPermissions):
-        await ctx.send('You do not have the required permissions to use this command.')
+        embed = discord.Embed(
+            title='❌ Missing Permissions',
+            description='You do not have the required permissions to use this command.',
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
 
 # Moderation Commands
-@bot.command()
-@commands.has_permissions(kick_members=True)
-async def kick(ctx, member: discord.Member, *, reason=None):
-    await member.kick(reason=reason)
-    await ctx.send(f'{member.mention} has been kicked. Reason: {reason}')
+class Moderation(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
-@bot.command()
-@commands.has_permissions(ban_members=True)
-async def ban(ctx, member: discord.Member, *, reason=None):
-    await member.ban(reason=reason)
-    await ctx.send(f'{member.mention} has been banned. Reason: {reason}')
+    @commands.command(help='Kick a member from the server :boot:')
+    @commands.has_permissions(kick_members=True)
+    async def kick(self, ctx, member: discord.Member, *, reason=None):
+        await member.kick(reason=reason)
+        embed = discord.Embed(
+            title='👢 Member Kicked',
+            description=f'{member.mention} has been kicked\nReason: {reason or "No reason provided"}',
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
 
-@bot.command()
-@commands.has_permissions(ban_members=True)
-async def unban(ctx, *, member):
-    banned_users = await ctx.guild.bans()
-    member_name, member_discriminator = member.split('#')
-    for ban_entry in banned_users:
-        user = ban_entry.user
-        if (user.name, user.discriminator) == (member_name, member_discriminator):
-            await ctx.guild.unban(user)
-            await ctx.send(f'{user.mention} has been unbanned.')
+    @commands.command(help='Ban a member from the server :hammer:')
+    @commands.has_permissions(ban_members=True)
+    async def ban(self, ctx, member: discord.Member, *, reason=None):
+        await member.ban(reason=reason)
+        embed = discord.Embed(
+            title='🔨 Member Banned',
+            description=f'{member.mention} has been banned\nReason: {reason or "No reason provided"}',
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
 
-@bot.command()
-@commands.has_permissions(manage_messages=True)
-async def clear(ctx, amount: int):
-    await ctx.channel.purge(limit=amount + 1)
-    msg = await ctx.send(f'Cleared {amount} messages.')
-    await asyncio.sleep(3)
-    await msg.delete()
+    @commands.command(help='Unban a member from the server :unlock:')
+    @commands.has_permissions(ban_members=True)
+    async def unban(self, ctx, *, member):
+        banned_users = await ctx.guild.bans()
+        member_name, member_discriminator = member.split('#')
+        for ban_entry in banned_users:
+            user = ban_entry.user
+            if (user.name, user.discriminator) == (member_name, member_discriminator):
+                await ctx.guild.unban(user)
+                embed = discord.Embed(
+                    title='🔓 Member Unbanned',
+                    description=f'{user.mention} has been unbanned',
+                    color=discord.Color.green()
+                )
+                await ctx.send(embed=embed)
+                return
+        await ctx.send('Member not found in ban list')
 
-@bot.command()
-@commands.has_permissions(manage_roles=True)
-async def warn(ctx, member: discord.Member, *, reason=None):
-    if member.id not in warnings:
-        warnings[member.id] = []
-    warnings[member.id].append({
-        'reason': reason,
-        'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    })
-    await ctx.send(f'{member.mention} has been warned. Reason: {reason}')
+    @commands.command(help='Clear a specified number of messages :broom:')
+    @commands.has_permissions(manage_messages=True)
+    async def clear(self, ctx, amount: int):
+        await ctx.channel.purge(limit=amount + 1)
+        embed = discord.Embed(
+            title='🧹 Messages Cleared',
+            description=f'Cleared {amount} messages',
+            color=discord.Color.blue()
+        )
+        msg = await ctx.send(embed=embed)
+        await asyncio.sleep(3)
+        await msg.delete()
+
+    @commands.command(help='Warn a member :warning:')
+    @commands.has_permissions(manage_roles=True)
+    async def warn(self, ctx, member: discord.Member, *, reason=None):
+        if member.id not in user_data['warnings']:
+            user_data['warnings'][member.id] = []
+        user_data['warnings'][member.id].append({
+            'reason': reason,
+            'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+        embed = discord.Embed(
+            title='⚠️ Member Warned',
+            description=f'{member.mention} has been warned\nReason: {reason or "No reason provided"}',
+            color=discord.Color.yellow()
+        )
+        await ctx.send(embed=embed)
 
 # Auto-role System
-@bot.event
-async def on_member_join(member):
-    if member.guild.id in auto_roles:
-        role = member.guild.get_role(auto_roles[member.guild.id])
-        if role:
-            await member.add_roles(role)
+class AutoRole(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
-@bot.command()
-@commands.has_permissions(manage_roles=True)
-async def setautorole(ctx, role: discord.Role):
-    auto_roles[ctx.guild.id] = role.id
-    await ctx.send(f'Auto-role has been set to {role.name}')
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        if member.guild.id in auto_roles:
+            role = member.guild.get_role(auto_roles[member.guild.id])
+            if role:
+                await member.add_roles(role)
+                embed = discord.Embed(
+                    title='🎭 Auto-Role Assigned',
+                    description=f'Welcome {member.mention}! You have been assigned the {role.name} role.',
+                    color=discord.Color.green()
+                )
+                # Send to system channel if it exists, otherwise first text channel
+                channel = member.guild.system_channel or member.guild.text_channels[0]
+                await channel.send(embed=embed)
+
+    @commands.command(help='Set the auto-role for new members :performing_arts:')
+    @commands.has_permissions(manage_roles=True)
+    async def setautorole(self, ctx, role: discord.Role):
+        auto_roles[ctx.guild.id] = role.id
+        embed = discord.Embed(
+            title='✅ Auto-Role Set',
+            description=f'Auto-role has been set to {role.mention}',
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
 
 # Application System
-@bot.command()
-async def apply(ctx):
-    await ctx.send('Please answer the following questions within 60 seconds each:')
-    questions = [
-        'What is your Minecraft username?',
-        'How old are you?',
-        'Why do you want to join our server?',
-        'Do you agree to follow our rules?'
-    ]
-    answers = []
+class Application(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.questions = [
+            'What is your Minecraft username? :video_game:',
+            'How old are you? :birthday:',
+            'Why do you want to join our server? :thinking:',
+            'Do you agree to follow our rules? :scroll:'
+        ]
 
-    for question in questions:
-        await ctx.send(question)
-        try:
-            answer = await bot.wait_for(
-                'message',
-                timeout=60.0,
-                check=lambda m: m.author == ctx.author and m.channel == ctx.channel
+    @commands.command(help='Apply to join the Minecraft server :pencil:')
+    async def apply(self, ctx):
+        embed = discord.Embed(
+            title='📝 Server Application',
+            description='Please answer the following questions within 60 seconds each.',
+            color=discord.Color.blue()
+        )
+        await ctx.send(embed=embed)
+
+        answers = []
+        for question in self.questions:
+            question_embed = discord.Embed(
+                description=question,
+                color=discord.Color.blue()
             )
-            answers.append(answer.content)
-        except asyncio.TimeoutError:
-            await ctx.send('Application timed out. Please try again.')
-            return
+            await ctx.send(embed=question_embed)
 
-    applications[ctx.author.id] = {
-        'answers': answers,
-        'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'status': 'pending'
-    }
+            try:
+                answer = await self.bot.wait_for(
+                    'message',
+                    timeout=60.0,
+                    check=lambda m: m.author == ctx.author and m.channel == ctx.channel
+                )
+                answers.append(answer.content)
+            except asyncio.TimeoutError:
+                timeout_embed = discord.Embed(
+                    title='⏰ Timeout',
+                    description='Application timed out. Please try again.',
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=timeout_embed)
+                return
 
-    await ctx.send('Your application has been submitted for review!')
+        applications[ctx.author.id] = {
+            'answers': answers,
+            'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'status': 'pending'
+        }
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def reviewapp(ctx, user: discord.Member, status: str):
-    if user.id in applications:
-        applications[user.id]['status'] = status.lower()
-        await ctx.send(f'Application for {user.mention} has been marked as {status}')
-        await user.send(f'Your application has been {status}!')
-    else:
-        await ctx.send('No application found for this user.')
+        success_embed = discord.Embed(
+            title='✅ Application Submitted',
+            description='Your application has been submitted for review!',
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=success_embed)
+
+    @commands.command(help='Review a pending application :clipboard:')
+    @commands.has_permissions(administrator=True)
+    async def reviewapp(self, ctx, user: discord.Member, status: str):
+        if user.id in applications:
+            applications[user.id]['status'] = status.lower()
+            
+            # Embed for the reviewer
+            review_embed = discord.Embed(
+                title='📋 Application Review',
+                description=f'Application for {user.mention} has been marked as {status}',
+                color=discord.Color.blue()
+            )
+            await ctx.send(embed=review_embed)
+
+            # Embed for the applicant
+            status_color = discord.Color.green() if status.lower() == 'accepted' else \
+                          discord.Color.red() if status.lower() == 'rejected' else \
+                          discord.Color.orange()
+            
+            user_embed = discord.Embed(
+                title='📬 Application Status Update',
+                description=f'Your application has been {status}!',
+                color=status_color
+            )
+            await user.send(embed=user_embed)
+        else:
+            error_embed = discord.Embed(
+                title='❌ Error',
+                description='No application found for this user.',
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=error_embed)
 
 # Utility Commands
-@bot.command()
-async def ping(ctx):
-    await ctx.send(f'Pong! {round(bot.latency * 1000)}ms')
+class Utility(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
-@bot.command()
-async def serverinfo(ctx):
-    guild = ctx.guild
-    embed = discord.Embed(
-        title=f'{guild.name} Server Information',
-        color=discord.Color.blue()
-    )
-    embed.add_field(name='Owner', value=guild.owner.mention)
-    embed.add_field(name='Members', value=guild.member_count)
-    embed.add_field(name='Created At', value=guild.created_at.strftime('%Y-%m-%d'))
-    embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
-    await ctx.send(embed=embed)
+    @commands.command(help='Check bot latency :ping_pong:')
+    async def ping(self, ctx):
+        embed = discord.Embed(
+            title='🏓 Pong!',
+            description=f'Latency: {round(self.bot.latency * 1000)}ms',
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
 
-@bot.command()
-async def userinfo(ctx, member: discord.Member = None):
-    member = member or ctx.author
-    roles = [role.mention for role in member.roles[1:]]
-    embed = discord.Embed(
-        title=f'User Information - {member}',
-        color=member.color
-    )
-    embed.add_field(name='ID', value=member.id)
-    embed.add_field(name='Joined', value=member.joined_at.strftime('%Y-%m-%d'))
-    embed.add_field(name='Roles', value=' '.join(roles) if roles else 'None')
-    embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
-    await ctx.send(embed=embed)
+    @commands.command(help='Display server information :information_source:')
+    async def serverinfo(self, ctx):
+        guild = ctx.guild
+        embed = discord.Embed(
+            title=f'📊 {guild.name} Server Information',
+            color=discord.Color.blue()
+        )
+        embed.add_field(name='👑 Owner', value=guild.owner.mention)
+        embed.add_field(name='👥 Members', value=guild.member_count)
+        embed.add_field(name='📅 Created At', value=guild.created_at.strftime('%Y-%m-%d'))
+        embed.add_field(name='💬 Text Channels', value=len(guild.text_channels))
+        embed.add_field(name='🔊 Voice Channels', value=len(guild.voice_channels))
+        embed.add_field(name='🎭 Roles', value=len(guild.roles))
+        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
+        await ctx.send(embed=embed)
 
-# Run the bot
+    @commands.command(help='Display user information :bust_in_silhouette:')
+    async def userinfo(self, ctx, member: discord.Member = None):
+        member = member or ctx.author
+        roles = [role.mention for role in member.roles[1:]]
+        embed = discord.Embed(
+            title=f'👤 User Information - {member}',
+            color=member.color
+        )
+        embed.add_field(name='🆔 ID', value=member.id)
+        embed.add_field(name='📅 Joined', value=member.joined_at.strftime('%Y-%m-%d'))
+        embed.add_field(name='📝 Created At', value=member.created_at.strftime('%Y-%m-%d'))
+        embed.add_field(name='👑 Top Role', value=member.top_role.mention)
+        embed.add_field(name='🎭 Roles', value=' '.join(roles) if roles else 'None')
+        embed.add_field(name='🤖 Bot', value='Yes' if member.bot else 'No')
+        embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
+        await ctx.send(embed=embed)
+
+# Profile System
+class Profile(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command(name='profile', aliases=['p'], help='View your or another user\'s profile 👤')
+    async def profile(self, ctx, member: discord.Member = None):
+        member = member or ctx.author
+        
+        embed = discord.Embed(
+            title=f'Profile - {member}',
+            color=member.color
+        )
+        
+        # Add user info
+        embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
+        embed.add_field(name='🆔 User ID', value=member.id, inline=True)
+        embed.add_field(name='📅 Joined', value=member.joined_at.strftime('%Y-%m-%d'), inline=True)
+        
+        # Add badges (with custom emoji examples)
+        badges = user_data['badges'].get(member.id, set())
+        badge_display = '\n'.join([BADGES[badge] for badge in badges]) if badges else BADGES['no_badge']
+        embed.add_field(
+            name='<:BadgeIcon:123456789> Badges',  # Replace with your server's badge emoji ID
+            value=badge_display.replace('👑', '<:OwnerBadge:123456789>')
+                              .replace('🛡️', '<:StaffBadge:123456789>')
+                              .replace('⚡', '<:AdminBadge:123456789>')
+                              .replace('❌', '<:NoBadge:123456789>'),
+            inline=False
+        )
+        
+        # Add no-prefix status (with custom emoji examples)
+        no_prefix_status = '<:Enabled:123456789> Enabled' if member.id in no_prefix_users else '<:Disabled:123456789> Disabled'
+        embed.add_field(name='<:PrefixIcon:123456789> No-Prefix Status', value=no_prefix_status, inline=False)
+        
+        # Add custom emoji hint
+        embed.set_footer(text='Replace <:EmojiName:123456789> with your server\'s custom emoji IDs')
+        
+        await ctx.send(embed=embed)
+
+    @commands.command(help='Grant a badge to a user 🏅')
+    @commands.is_owner()
+    async def grant_badge(self, ctx, member: discord.Member, badge: str):
+        if badge.lower() not in BADGES:
+            await ctx.send(f'Invalid badge. Available badges: {", ".join(BADGES.keys())}')
+            return
+        
+        if member.id not in user_data['badges']:
+            user_data['badges'][member.id] = set()
+        
+        user_data['badges'][member.id].add(badge.lower())
+        await ctx.send(f'Granted {BADGES[badge.lower()]} to {member.mention}')
+
+    @commands.command(help='Revoke a badge from a user ❌')
+    @commands.is_owner()
+    async def revoke_badge(self, ctx, member: discord.Member, badge: str):
+        if member.id not in user_data['badges'] or badge.lower() not in user_data['badges'][member.id]:
+            await ctx.send(f'{member.mention} does not have this badge')
+            return
+        
+        user_data['badges'][member.id].remove(badge.lower())
+        await ctx.send(f'Revoked {BADGES[badge.lower()]} from {member.mention}')
+
+# Add all cogs
+def setup(bot):
+    bot.add_cog(Moderation(bot))
+    bot.add_cog(AutoRole(bot))
+    bot.add_cog(Application(bot))
+    bot.add_cog(Utility(bot))
+    bot.add_cog(Profile(bot))
+
+# Setup cogs and run the bot
+setup(bot)
 bot.run(os.getenv('DISCORD_BOT_TOKEN'))
