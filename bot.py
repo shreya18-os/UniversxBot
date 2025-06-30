@@ -86,32 +86,66 @@ class CustomHelpCommand(commands.HelpCommand):
             color=discord.Color.blue()
         )
 
-        categories = {
-            'Moderation': '🛡️',
-            'Auto-Role': '🎭',
-            'Application': '📝',
-            'Utility': '🔧',
-            'Profile': '👤',
-            'Owner': '👑',
-            'Uncategorized': '📦'
-        }
+        embed.add_field(
+            name=':shield: Moderation',
+            value=(
+                '`kick` – Kick a member\n'
+                '`ban` – Ban a member\n'
+                '`unban` – Unban a user\n'
+                '`clear` – Purge messages\n'
+                '`warn` – Warn a user'
+            ),
+            inline=False
+        )
 
-        for cog, commands_list in mapping.items():
-            filtered = await self.filter_commands(commands_list, sort=True)
-            if not filtered:
-                continue
+        embed.add_field(
+            name=':performing_arts: Auto-Role',
+            value=(
+                '`setautorole` – Set role for new members'
+            ),
+            inline=False
+        )
 
-            cog_name = cog.qualified_name if cog else "Uncategorized"
-            emoji = categories.get(cog_name, '📦')
-            command_list = ', '.join(f'`{cmd.name}`' for cmd in filtered)
+        embed.add_field(
+            name=':memo: Application',
+            value=(
+                '`apply` – Start an application\n'
+                '`reviewapp` – Review a user\'s application'
+            ),
+            inline=False
+        )
 
-            embed.add_field(
-                name=f'{emoji} {cog_name}',
-                value=command_list,
-                inline=False
-            )
+        embed.add_field(
+            name=':wrench: Utility',
+            value=(
+                '`ping` – Show latency\n'
+                '`serverinfo` – Server stats\n'
+                '`userinfo` – User info'
+            ),
+            inline=False
+        )
 
-        embed.set_footer(text='Use u!help <command> for more details about a command')
+        embed.add_field(
+            name=':bust_in_silhouette: Profile',
+            value=(
+                '`profile` / `p` – View profile\n'
+                '`grant_badge` – Grant badge (Owner)\n'
+                '`revoke_badge` – Revoke badge (Owner)'
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name=':crown: Owner Only',
+            value=(
+                '`grant_no_prefix` – Allow user to run commands without prefix\n'
+                '`revoke_no_prefix` – Remove no-prefix permission\n'
+                '`list_no_prefix` – List users with no-prefix access'
+            ),
+            inline=False
+        )
+
+        embed.set_footer(text='Use u!help <command> to view detailed help for a command.')
         await self.get_destination().send(embed=embed)
 
     
