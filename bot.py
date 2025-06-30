@@ -80,40 +80,41 @@ class CustomHelpCommand(commands.HelpCommand):
         return f'{self.context.clean_prefix}{command.qualified_name} {command.signature}'
 
     async def send_bot_help(self, mapping):
-    embed = discord.Embed(
-        title='📚 Universx MC Bot Help Menu',
-        description='Welcome to the help menu! Use `u!help <command>` for detailed information.',
-        color=discord.Color.blue()
-    )
-
-    categories = {
-        'Moderation': '🛡️',
-        'Auto-Role': '🎭',
-        'Application': '📝',
-        'Utility': '🔧',
-        'Profile': '👤',
-        'Owner': '👑',
-        'Uncategorized': '📦'
-    }
-
-    # Loop through commands grouped by cog
-    for cog, commands_list in mapping.items():
-        filtered = await self.filter_commands(commands_list, sort=True)
-        if not filtered:
-            continue
-
-        cog_name = cog.qualified_name if cog else "Uncategorized"
-        emoji = categories.get(cog_name, '📦')
-        command_list = ', '.join(f'`{cmd.name}`' for cmd in filtered)
-
-        embed.add_field(
-            name=f'{emoji} {cog_name}',
-            value=command_list,
-            inline=False
+        embed = discord.Embed(
+            title='📚 Universx MC Bot Help Menu',
+            description='Welcome to the help menu! Use `u!help <command>` for detailed information.',
+            color=discord.Color.blue()
         )
 
-    embed.set_footer(text='Use u!help <command> for more details about a command')
-    await self.get_destination().send(embed=embed)
+        categories = {
+            'Moderation': '🛡️',
+            'Auto-Role': '🎭',
+            'Application': '📝',
+            'Utility': '🔧',
+            'Profile': '👤',
+            'Owner': '👑',
+            'Uncategorized': '📦'
+        }
+
+        for cog, commands_list in mapping.items():
+            filtered = await self.filter_commands(commands_list, sort=True)
+            if not filtered:
+                continue
+
+            cog_name = cog.qualified_name if cog else "Uncategorized"
+            emoji = categories.get(cog_name, '📦')
+            command_list = ', '.join(f'`{cmd.name}`' for cmd in filtered)
+
+            embed.add_field(
+                name=f'{emoji} {cog_name}',
+                value=command_list,
+                inline=False
+            )
+
+        embed.set_footer(text='Use u!help <command> for more details about a command')
+        await self.get_destination().send(embed=embed)
+
+    
     async def send_command_help(self, command):
         embed = discord.Embed(
             title=f'Command: {command.name}',
