@@ -475,12 +475,18 @@ class Profile(commands.Cog):
         await ctx.send(f'Revoked {BADGES[badge.lower()]} from {member.mention}')
 
 # Add all cogs
-def setup(bot):
-    bot.add_cog(Moderation(bot))
-    bot.add_cog(AutoRole(bot))
-    bot.add_cog(Application(bot))
-    bot.add_cog(Utility(bot))
-    bot.add_cog(Profile(bot))
+async def setup_cogs():
+    await bot.add_cog(Moderation(bot))
+    await bot.add_cog(AutoRole(bot))
+    await bot.add_cog(Application(bot))
+    await bot.add_cog(Utility(bot))
+    await bot.add_cog(Profile(bot))
+
+@bot.event
+async def on_ready():
+    await setup_cogs()
+    print(f'{bot.user} has connected to Discord!')
+    await bot.change_presence(activity=discord.Game(name='Universx MC | u!help'))
 
 # Setup cogs and run the bot
 setup(bot)
