@@ -489,5 +489,4 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name='Universx MC | u!help'))
 
 # Setup cogs and run the bot
-setup(bot)
 bot.run(os.getenv('DISCORD_BOT_TOKEN'))
