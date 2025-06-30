@@ -475,7 +475,7 @@ class Profile(commands.Cog):
         embed.add_field(
             name='<a:badge1:1389182687947919370> Badges',  # Replace with your server's badge emoji ID
             value=badge_display.replace('👑', '<:owner1:1389180694814654474>')
-                              .replace('🛡️', '<a:staff1:974820795928940554>')
+                              .replace('🛡️', '<a:staff112:1389180853195771906>')
                               .replace('⚡', '<:admin1:1389181036755161221>')
                               .replace('❌', '<a:nope1:1389178762020520109>'),
             inline=False
