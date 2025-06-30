@@ -80,35 +80,40 @@ class CustomHelpCommand(commands.HelpCommand):
         return f'{self.context.clean_prefix}{command.qualified_name} {command.signature}'
 
     async def send_bot_help(self, mapping):
-        embed = discord.Embed(
-            title='📚 Universx MC Bot Help Menu',
-            description='Welcome to the help menu! Use `u!help <category>` for detailed information.',
-            color=discord.Color.blue()
+    embed = discord.Embed(
+        title='📚 Universx MC Bot Help Menu',
+        description='Welcome to the help menu! Use `u!help <command>` for detailed information.',
+        color=discord.Color.blue()
+    )
+
+    categories = {
+        'Moderation': '🛡️',
+        'Auto-Role': '🎭',
+        'Application': '📝',
+        'Utility': '🔧',
+        'Profile': '👤',
+        'Owner': '👑',
+        'Uncategorized': '📦'
+    }
+
+    # Loop through commands grouped by cog
+    for cog, commands_list in mapping.items():
+        filtered = await self.filter_commands(commands_list, sort=True)
+        if not filtered:
+            continue
+
+        cog_name = cog.qualified_name if cog else "Uncategorized"
+        emoji = categories.get(cog_name, '📦')
+        command_list = ', '.join(f'`{cmd.name}`' for cmd in filtered)
+
+        embed.add_field(
+            name=f'{emoji} {cog_name}',
+            value=command_list,
+            inline=False
         )
 
-        # Add categories with emojis
-        categories = {
-            'Moderation': '🛡️',
-            'Auto-Role': '🎭',
-            'Application': '📝',
-            'Utility': '🔧',
-            'Profile': '👤',
-            'Owner': '👑'
-        }
-
-        for cog_name, emoji in categories.items():
-            cog_commands = [cmd for cmd in bot.commands if cmd.cog_name == cog_name]
-            if cog_commands:
-                command_list = ', '.join(f'`{cmd.name}`' for cmd in cog_commands)
-                embed.add_field(
-                    name=f'{emoji} {cog_name}',
-                    value=command_list,
-                    inline=False
-                )
-
-        embed.set_footer(text='Use u!help <command> for more details about a command')
-        await self.get_destination().send(embed=embed)
-
+    embed.set_footer(text='Use u!help <command> for more details about a command')
+    await self.get_destination().send(embed=embed)
     async def send_command_help(self, command):
         embed = discord.Embed(
             title=f'Command: {command.name}',
@@ -166,6 +171,7 @@ async def on_command_error(ctx, error):
 class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+    __cog_name__ = "Moderation" 
 
     @commands.command(help='Kick a member from the server :boot:')
     @commands.has_permissions(kick_members=True)
