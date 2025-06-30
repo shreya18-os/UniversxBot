@@ -188,12 +188,15 @@ bot.help_command = CustomHelpCommand()
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        embed = discord.Embed(
-            title='❌ Command Not Found',
-            description='Use `u!help` to see available commands.',
-            color=discord.Color.red()
-        )
-        await ctx.send(embed=embed)
+        # Check if the message started with the real prefix (u!)
+        if ctx.prefix == 'u!':
+            embed = discord.Embed(
+                title='❌ Command Not Found',
+                description='Use `u!help` to see available commands.',
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+        return  # Do not show errors for no-prefix messages
     elif isinstance(error, commands.MissingPermissions):
         embed = discord.Embed(
             title='❌ Missing Permissions',
@@ -201,6 +204,8 @@ async def on_command_error(ctx, error):
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
+    else:
+        raise error  # For development/debugging purposes
 
 # Moderation Commands
 class Moderation(commands.Cog):
